@@ -22,8 +22,8 @@ type item struct {
 	Link  string `xml:"link"`
 }
 type feed struct {
-	XMLName  xml.Name `xml:"rss"`
-	Channels []item   `xml:"channel>item"`
+	XMLName xml.Name `xml:"rss"`
+	Items   []item   `xml:"channel>item"`
 }
 
 func readFeed(source string) *feed {
@@ -62,6 +62,20 @@ func checkTorrent(pattern string, outPath string, torrent item) {
 	fmt.Println("Found", torrent.Title)
 }
 
+func diff(new, old *feed) []item {
+	if old == nil {
+		return new.Items
+	}
+	var newItems []item
+	for _, item := range new.Items {
+		if item == old.Items[0] {
+			break
+		}
+		newItems = append(newItems, item)
+	}
+	return newItems
+}
+
 func main() {
 	source := flag.String("s", "", "A HTTP RSS source.")
 	pattern := flag.String("p", "", "The pattern to match RSS feed titles against.")
@@ -74,13 +88,17 @@ func main() {
 		return
 	}
 
+	var previousFeed *feed
+
 	for {
 		fmt.Println("Checking")
 		feed := readFeed(*source)
-		for _, torrent := range feed.Channels {
+		items := diff(feed, previousFeed)
+		for _, torrent := range items {
+			// Check if torrent already exists in outPath
 			checkTorrent(*pattern, *outPath, torrent)
 		}
-
+		previousFeed = feed
 		time.Sleep(time.Duration(*wait) * time.Second)
 	}
 }
