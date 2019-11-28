@@ -1,3 +1,8 @@
+// Package downer solves all your torrent rss feed needs
+//
+// Will keep track of the files that's already been seen during
+// the programs runtime.
+// Will not download already existing files.
 package main
 
 import (
@@ -40,10 +45,33 @@ func readFeed(source string) *feed {
 	return r
 }
 
+func CheckFolderForFile(folder string, filename string) bool {
+	if folder == "" {
+		folder= "."
+	}
+	files, err := ioutil.ReadDir(folder)
+	check(err)
+	for _, file := range files {
+		if file.Name() == filename {
+			fmt.Printf("File %s already exists\n", filename)
+			return true
+		}
+	}
+	return false
+}
+
+func torrentName(outPath string, torrent item) string {
+	return outPath + strings.ReplaceAll(torrent.Title, "/", "-") + ".torrent"
+}
+
 func checkTorrent(pattern string, outPath string, torrent item) {
 	matched, err := regexp.MatchString(pattern, torrent.Title)
 	check(err)
 	if !matched {
+		return
+	}
+
+	if CheckFolderForFile(outPath, torrentName(outPath, torrent)) {
 		return
 	}
 
@@ -54,12 +82,11 @@ func checkTorrent(pattern string, outPath string, torrent item) {
 	check(err)
 
 	err = ioutil.WriteFile(
-		outPath+strings.ReplaceAll(torrent.Title, "/", "-")+".torrent",
+		torrentName(outPath, torrent),
 		body,
 		0644)
 	check(err)
-
-	fmt.Println("Found", torrent.Title)
+	fmt.Printf("Found torrent %s\n", torrent.Title)
 }
 
 func diff(new, old *feed) []item {
@@ -79,7 +106,7 @@ func diff(new, old *feed) []item {
 func main() {
 	source := flag.String("s", "", "A HTTP RSS source.")
 	pattern := flag.String("p", "", "The pattern to match RSS feed titles against.")
-	outPath := flag.String("o", "./", "Output path. Defaults to current dir.")
+	outPath := flag.String("o", "", "Output path. Defaults to current dir.")
 	wait := flag.Int("t", 60*15, "Time to sleep between checks in seconds. Defaults to 15 minutes")
 	flag.Parse()
 
@@ -95,7 +122,6 @@ func main() {
 		feed := readFeed(*source)
 		items := diff(feed, previousFeed)
 		for _, torrent := range items {
-			// Check if torrent already exists in outPath
 			checkTorrent(*pattern, *outPath, torrent)
 		}
 		previousFeed = feed
