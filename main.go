@@ -47,7 +47,7 @@ func readFeed(source string) *feed {
 
 func CheckFolderForFile(folder string, filename string) bool {
 	if folder == "" {
-		folder= "."
+		folder = "."
 	}
 	files, err := ioutil.ReadDir(folder)
 	check(err)
@@ -64,15 +64,16 @@ func torrentName(outPath string, torrent item) string {
 	return outPath + strings.ReplaceAll(torrent.Title, "/", "-") + ".torrent"
 }
 
-func checkTorrent(pattern string, outPath string, torrent item) {
+func checkTorrent(pattern string, outPath string, torrent item) bool {
 	matched, err := regexp.MatchString(pattern, torrent.Title)
 	check(err)
 	if !matched {
-		return
+		return false
 	}
 
 	if CheckFolderForFile(outPath, torrentName(outPath, torrent)) {
-		return
+		fmt.Printf("Found already seen torrent %s\n", torrent.Title)
+		return false
 	}
 
 	resp, err := http.Get(torrent.Link)
@@ -80,13 +81,13 @@ func checkTorrent(pattern string, outPath string, torrent item) {
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	check(err)
-
 	err = ioutil.WriteFile(
 		torrentName(outPath, torrent),
 		body,
 		0644)
 	check(err)
 	fmt.Printf("Found torrent %s\n", torrent.Title)
+	return true
 }
 
 func diff(new, old *feed) []item {
@@ -121,10 +122,18 @@ func main() {
 		fmt.Println("Checking")
 		feed := readFeed(*source)
 		items := diff(feed, previousFeed)
+		var matchFound = false
 		for _, torrent := range items {
-			checkTorrent(*pattern, *outPath, torrent)
+			didMatch := checkTorrent(*pattern, *outPath, torrent)
+			if  didMatch {
+				matchFound = true
+			}
 		}
 		previousFeed = feed
+		if !matchFound {
+
+			fmt.Println("No match was found")
+		}
 		time.Sleep(time.Duration(*wait) * time.Second)
 	}
 }
