@@ -14,6 +14,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/rpkarlsson/downer/rss"
 )
 
 func check(e error) {
@@ -22,16 +24,7 @@ func check(e error) {
 	}
 }
 
-type item struct {
-	Title string `xml:"title"`
-	Link  string `xml:"link"`
-}
-type feed struct {
-	XMLName xml.Name `xml:"rss"`
-	Items   []item   `xml:"channel>item"`
-}
-
-func readFeed(source string) *feed {
+func readFeed(source string) *rss.Feed {
 	resp, err := http.Get(source)
 	check(err)
 
@@ -39,71 +32,30 @@ func readFeed(source string) *feed {
 	body, err := ioutil.ReadAll(resp.Body)
 	check(err)
 
-	r := &feed{}
+	r := &rss.Feed{}
 	err = xml.Unmarshal(body, &r)
 	check(err)
 	return r
 }
 
-func CheckFolderForFile(folder string, filename string) bool {
-	if folder == "" {
-		folder = "."
-	}
-	files, err := ioutil.ReadDir(folder)
+func isMatch(torrent rss.Item, pattern *string) bool {
+	matched, err := regexp.MatchString(*pattern, torrent.Title)
 	check(err)
-	for _, file := range files {
-		if file.Name() == filename {
-			fmt.Printf("File %s already exists\n", filename)
-			return true
-		}
-	}
-	return false
+	return matched
 }
 
-func torrentName(outPath string, torrent item) string {
-	return outPath + strings.ReplaceAll(torrent.Title, "/", "-") + ".torrent"
-}
-
-func checkTorrent(pattern string, outPath string, torrent item) bool {
-	matched, err := regexp.MatchString(pattern, torrent.Title)
-	check(err)
-	if !matched {
-		return false
-	}
-
-	if CheckFolderForFile(outPath, torrentName(outPath, torrent)) {
-		fmt.Printf("Found already seen torrent %s\n", torrent.Title)
-		return false
-	}
-
+func downloadTorrent(pattern string, outPath string, torrent rss.Item) {
 	resp, err := http.Get(torrent.Link)
 	check(err)
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	check(err)
 	err = ioutil.WriteFile(
-		torrentName(outPath, torrent),
+		outPath+strings.ReplaceAll(torrent.Title, "/", "-")+".torrent",
 		body,
 		0644)
 	check(err)
-	fmt.Printf("Found torrent %s\n", torrent.Title)
-	return true
 }
-
-func diff(new, old *feed) []item {
-	if old == nil {
-		return new.Items
-	}
-	var newItems []item
-	for _, item := range new.Items {
-		if item == old.Items[0] {
-			break
-		}
-		newItems = append(newItems, item)
-	}
-	return newItems
-}
-
 func main() {
 	source := flag.String("s", "", "A HTTP RSS source.")
 	pattern := flag.String("p", "", "The pattern to match RSS feed titles against.")
@@ -116,23 +68,17 @@ func main() {
 		return
 	}
 
-	var previousFeed *feed
+	download_history := rss.History{}
 
 	for {
 		fmt.Println("Checking")
 		feed := readFeed(*source)
-		items := diff(feed, previousFeed)
-		var matchFound = false
-		for _, torrent := range items {
-			didMatch := checkTorrent(*pattern, *outPath, torrent)
-			if  didMatch {
-				matchFound = true
+		for _, torrent := range feed.Items {
+			if isMatch(torrent, pattern) && !download_history.Contains(torrent) {
+				downloadTorrent(*pattern, *outPath, torrent)
+				download_history.Add(torrent)
+				fmt.Printf("Found torrent %s\n", torrent.Title)
 			}
-		}
-		previousFeed = feed
-		if !matchFound {
-
-			fmt.Println("No match was found")
 		}
 		time.Sleep(time.Duration(*wait) * time.Second)
 	}
