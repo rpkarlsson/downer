@@ -1,0 +1,9 @@
+* Downer - Simple terminal RSS torrent downloader
+  Downer is a commandline RSS torrent downloader with a set of very
+  focused functionality. Currently Downer saves no state between
+  invocations so fireing a new process will have no knowledge of
+  previously seen torrents. We leave that to the torrent program.
+
+** Possible future features
+- [ ] Awareness of episodes
+- [ ] Persist state between invocations?
