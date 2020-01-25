@@ -40,3 +40,17 @@ func TestContains(t *testing.T) {
 		t.Error("Should see item in history")
 	}
 }
+
+func TestContainsSameTorrentURL(t *testing.T) {
+	history := rss.History{}
+	first := rss.Item{Title: "a", Link: "a"}
+	first_with_different_title := rss.Item{Title: "b", Link: "a"}
+	unseen := rss.Item{Title: "b", Link: "b"}
+	history.Add(first)
+	if !history.Contains(first_with_different_title) {
+		t.Error("Should see a item in history")
+	}
+	if history.Contains(unseen) {
+		t.Error("Should not see a item in history")
+	}
+}

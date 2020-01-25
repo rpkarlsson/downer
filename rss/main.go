@@ -28,7 +28,7 @@ func (h *History) Items() []Item {
 
 func (h *History) Contains(item Item) bool {
 	for _, seen_item := range h.Items() {
-		if seen_item == item {
+		if seen_item.Link == item.Link {
 			return true
 		}
 	}
