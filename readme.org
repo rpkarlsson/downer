@@ -4,6 +4,9 @@
   invocations so fireing a new process will have no knowledge of
   previously seen torrents. We leave that to the torrent program.
 
+  Currently only handles torrent files over HTTP(S).
+
 ** Possible future features
 - [ ] Awareness of episodes
 - [ ] Persist state between invocations?
+- [ ] Support for magnet links
