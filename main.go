@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -24,8 +25,8 @@ func check(e error) {
 	}
 }
 
-func readFeed(source string) *rss.Feed {
-	resp, err := http.Get(source)
+func readFeed(source *url.URL) *rss.Feed {
+	resp, err := http.Get(source.String())
 	check(err)
 
 	defer resp.Body.Close()
@@ -71,8 +72,12 @@ func main() {
 	download_history := rss.History{}
 
 	for {
-		fmt.Println("Checking")
-		feed := readFeed(*source)
+		feedURI, err := url.ParseRequestURI(*source)
+		if err != nil {
+			fmt.Printf("Unable to parse %s as URL.\n", *source)
+			break
+		}
+		feed := readFeed(feedURI)
 		for _, torrent := range feed.Items {
 			if isMatch(torrent, pattern) && !download_history.Contains(torrent) {
 				downloadTorrent(*pattern, *outPath, torrent)
