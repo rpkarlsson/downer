@@ -10,3 +10,8 @@
 - [ ] Awareness of episodes
 - [ ] Persist state between invocations?
 - [ ] Support for magnet links
+
+** How to use it
+#+begin_src sh
+downer -s "https://distrowatch.com/news/torrents.xml" -p "Fedora-Workstation"
+#+end_src
