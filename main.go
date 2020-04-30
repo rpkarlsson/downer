@@ -9,12 +9,13 @@ import (
 	"encoding/xml"
 	"flag"
 	"fmt"
+	"github.com/rpkarlsson/downer/rss"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
-	"github.com/rpkarlsson/downer/rss"
 )
 
 func check(e error) {
@@ -51,6 +52,7 @@ func downloadTorrent(pattern string, outPath string, torrent rss.Item) {
 }
 func main() {
 	source := flag.String("s", "", "A HTTP RSS source.")
+	downloadLimit := flag.Int("l", -1, "A limit to the amount of torrents to download")
 	pattern := flag.String("p", "", "The pattern to match RSS feed titles against.")
 	outPath := flag.String("o", "", "Output path. Defaults to current dir.")
 	wait := flag.Int("t", 60*15, "Time to sleep between checks in seconds. Defaults to 15 minutes")
@@ -75,6 +77,9 @@ func main() {
 				downloadTorrent(*pattern, *outPath, torrent)
 				download_history.Add(torrent)
 				fmt.Printf("Found torrent %s\n", torrent.Title)
+			}
+			if download_history.Length() == *downloadLimit {
+				os.Exit(0)
 			}
 		}
 		time.Sleep(time.Duration(*wait) * time.Second)

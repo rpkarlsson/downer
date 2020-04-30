@@ -64,3 +64,18 @@ func TestIsMatch (t *testing.T) {
 		t.Error("Should not be a match")
 	}
 }
+
+func TestHistoryLength(t *testing.T) {
+	history := rss.History{}
+	first := rss.Item{Title: "a", Link: "a"}
+	second := rss.Item{Title: "b", Link: "a"}
+	history.Add(first)
+	if history.Length() != 1 {
+		t.Error("Wrong count")
+	}
+
+	history.Add(second)
+	if history.Length() != 2 {
+		t.Error("Wrong count")
+	}
+}

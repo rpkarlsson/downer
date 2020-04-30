@@ -43,3 +43,7 @@ func (h *History) Contains(item Item) bool {
 	}
 	return false
 }
+
+func (h *History) Length() int {
+	return len(h.seen_items)
+}
