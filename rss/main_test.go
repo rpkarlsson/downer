@@ -54,3 +54,13 @@ func TestContainsSameTorrentURL(t *testing.T) {
 		t.Error("Should not see a item in history")
 	}
 }
+
+func TestIsMatch (t *testing.T) {
+	item := rss.Item{Title: "a long string"}
+	if !item.IsMatch("ong") {
+		t.Error("Should be a match")
+	}
+	if item.IsMatch("foo") {
+		t.Error("Should not be a match")
+	}
+}

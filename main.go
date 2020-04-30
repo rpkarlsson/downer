@@ -12,10 +12,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"regexp"
 	"strings"
 	"time"
-
 	"github.com/rpkarlsson/downer/rss"
 )
 
@@ -37,12 +35,6 @@ func readFeed(source *url.URL) *rss.Feed {
 	err = xml.Unmarshal(body, &r)
 	check(err)
 	return r
-}
-
-func isMatch(torrent rss.Item, pattern *string) bool {
-	matched, err := regexp.MatchString(*pattern, torrent.Title)
-	check(err)
-	return matched
 }
 
 func downloadTorrent(pattern string, outPath string, torrent rss.Item) {
@@ -79,7 +71,7 @@ func main() {
 		}
 		feed := readFeed(feedURI)
 		for _, torrent := range feed.Items {
-			if isMatch(torrent, pattern) && !download_history.Contains(torrent) {
+			if torrent.IsMatch(*pattern) && !download_history.Contains(torrent) {
 				downloadTorrent(*pattern, *outPath, torrent)
 				download_history.Add(torrent)
 				fmt.Printf("Found torrent %s\n", torrent.Title)

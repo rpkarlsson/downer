@@ -2,6 +2,7 @@ package rss
 
 import (
 	"encoding/xml"
+	"regexp"
 )
 
 type Feed struct {
@@ -12,6 +13,14 @@ type Feed struct {
 type Item struct {
 	Title string `xml:"title"`
 	Link  string `xml:"link"`
+}
+
+func (item *Item) IsMatch(pattern string) bool {
+	matched, err := regexp.MatchString(pattern, item.Title)
+	if err != nil {
+		panic(err)
+	}
+	return matched
 }
 
 type History struct {
