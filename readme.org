@@ -13,3 +13,8 @@
 #+begin_src sh
 downer -s "https://distrowatch.com/news/torrents.xml" -p "Fedora-Workstation"
 #+end_src
+
+** Run all tests
+#+begin_src
+make test
+#+end_src
