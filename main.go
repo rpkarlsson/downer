@@ -9,6 +9,7 @@ import (
 	"encoding/xml"
 	"flag"
 	"fmt"
+	"github.com/rpkarlsson/downer/magnet"
 	"github.com/rpkarlsson/downer/rss"
 	"io/ioutil"
 	"net/http"
@@ -39,11 +40,17 @@ func readFeed(source *url.URL) *rss.Feed {
 }
 
 func downloadTorrent(pattern string, outPath string, torrent rss.Item) {
-	resp, err := http.Get(torrent.Link)
-	check(err)
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	check(err)
+	var body []byte
+	var err error
+	if magnet.IsMagnetLink(torrent.Link) {
+		body = []byte(magnet.MakeTorrentBody(torrent.Link))
+	} else {
+		resp, err := http.Get(torrent.Link)
+		check(err)
+		defer resp.Body.Close()
+		body, err = ioutil.ReadAll(resp.Body)
+		check(err)
+	}
 	err = ioutil.WriteFile(
 		outPath+strings.ReplaceAll(torrent.Title, "/", "-")+".torrent",
 		body,
