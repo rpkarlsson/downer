@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -28,47 +29,66 @@ type cliOptions struct {
 	wait          *int
 }
 
-func check(e error) {
-	if e != nil {
-		panic(e)
-	}
-}
-
 func readFeed(source *url.URL) *rss.Feed {
 	resp, err := http.Get(source.String())
-	check(err)
+	if err != nil {
+		fmt.Println("Error when fetching feed:", err)
+		os.Exit(1)
+	}
 
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
-	check(err)
+	if err != nil {
+		fmt.Println("Error when reading feed body:", err)
+		os.Exit(1)
+	}
 
 	r := &rss.Feed{}
 	err = xml.Unmarshal(body, &r)
-	check(err)
+	if err != nil {
+		fmt.Println("Error during RSS parsing:", err)
+		os.Exit(1)
+	}
+
 	return r
 }
 
-func downloadTorrentFile(torrent rss.Item) []byte {
+func downloadTorrentFile(torrent rss.Item) ([]byte, error) {
 	resp, err := http.Get(torrent.Link)
-	check(err)
+	if err != nil {
+		return nil, err
+	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
-	check(err)
-	return body
+	if err != nil {
+		return nil, err
+	}
+
+	return body, nil
 }
 
-func getTorrent(torrent rss.Item, options cliOptions) {
+func getTorrent(torrent rss.Item, options cliOptions) error {
 	var body []byte
+	var err error
 	if magnet.IsMagnetLink(torrent.Link) {
 		body = []byte(magnet.MakeTorrentBody(torrent.Link))
 	} else {
-		body = downloadTorrentFile(torrent)
+		body, err = downloadTorrentFile(torrent)
+		if err != nil {
+			return err
+		}
 	}
-	err := ioutil.WriteFile(
+
+	err = ioutil.WriteFile(
 		*options.outPath+strings.ReplaceAll(torrent.Title, "/", "-")+".torrent",
 		body,
 		0644)
-	check(err)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func parseOptions() cliOptions {
@@ -81,6 +101,7 @@ func parseOptions() cliOptions {
 	}
 
 	flag.Parse()
+
 	return options
 }
 
@@ -91,20 +112,32 @@ func main() {
 		return
 	}
 
+	_, err := regexp.Compile(*options.pattern)
+
+	if err != nil {
+		fmt.Println("Unable to compile pattern:", err)
+		os.Exit(1)
+	}
+
 	download_history := rss.History{}
 
 	for {
 		feedURI, err := url.ParseRequestURI(*options.source)
 		if err != nil {
-			fmt.Printf("Unable to parse %s as URL.\n", *options.source)
+			fmt.Printf("Unable to parse the source \"%s \" as URL.\n", *options.source)
 			break
 		}
 		feed := readFeed(feedURI)
 		for _, torrent := range feed.Items {
-			if torrent.IsMatch(*options.pattern) && !download_history.Contains(torrent) {
-				getTorrent(torrent, options)
-				download_history.Add(torrent)
-				fmt.Printf("Found torrent %s\n", torrent.Title)
+			isMatching, _ := torrent.IsMatch(*options.pattern)
+			if isMatching && !download_history.Contains(torrent) {
+				err := getTorrent(torrent, options)
+				if err != nil {
+					fmt.Printf("Unable to get torrent:", err)
+				} else {
+					download_history.Add(torrent)
+					fmt.Printf("Found torrent %s\n", torrent.Title)
+				}
 			}
 			if download_history.Length() == *options.downloadLimit {
 				os.Exit(0)

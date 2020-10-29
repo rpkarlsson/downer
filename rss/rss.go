@@ -15,12 +15,9 @@ type Item struct {
 	Link  string `xml:"link"`
 }
 
-func (item *Item) IsMatch(pattern string) bool {
+func (item *Item) IsMatch(pattern string) (bool, error) {
 	matched, err := regexp.MatchString(pattern, item.Title)
-	if err != nil {
-		panic(err)
-	}
-	return matched
+	return matched, err
 }
 
 type History struct {
