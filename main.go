@@ -9,14 +9,15 @@ import (
 	"encoding/xml"
 	"flag"
 	"fmt"
-	"github.com/rpkarlsson/downer/magnet"
-	"github.com/rpkarlsson/downer/rss"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/rpkarlsson/downer/magnet"
+	"github.com/rpkarlsson/downer/rss"
 )
 
 func check(e error) {
