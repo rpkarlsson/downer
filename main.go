@@ -28,7 +28,6 @@ type cliOptions struct {
 	wait          *int
 }
 
-
 func check(e error) {
 	if e != nil {
 		panic(e)
@@ -49,20 +48,24 @@ func readFeed(source *url.URL) *rss.Feed {
 	return r
 }
 
-func downloadTorrent(pattern string, outPath string, torrent rss.Item) {
+func downloadTorrentFile(torrent rss.Item) []byte {
+	resp, err := http.Get(torrent.Link)
+	check(err)
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	check(err)
+	return body
+}
+
+func getTorrent(torrent rss.Item, options cliOptions) {
 	var body []byte
-	var err error
 	if magnet.IsMagnetLink(torrent.Link) {
 		body = []byte(magnet.MakeTorrentBody(torrent.Link))
 	} else {
-		resp, err := http.Get(torrent.Link)
-		check(err)
-		defer resp.Body.Close()
-		body, err = ioutil.ReadAll(resp.Body)
-		check(err)
+		body = downloadTorrentFile(torrent)
 	}
-	err = ioutil.WriteFile(
-		outPath+strings.ReplaceAll(torrent.Title, "/", "-")+".torrent",
+	err := ioutil.WriteFile(
+		*options.outPath+strings.ReplaceAll(torrent.Title, "/", "-")+".torrent",
 		body,
 		0644)
 	check(err)
@@ -94,7 +97,7 @@ func main() {
 		feed := readFeed(feedURI)
 		for _, torrent := range feed.Items {
 			if torrent.IsMatch(*options.pattern) && !download_history.Contains(torrent) {
-				downloadTorrent(*options.pattern, *options.outPath, torrent)
+				getTorrent(torrent, options)
 				download_history.Add(torrent)
 				fmt.Printf("Found torrent %s\n", torrent.Title)
 			}
