@@ -34,7 +34,6 @@ type cliOptions struct {
 func logAndExitOnErr(message string, err error) {
 	if err != nil {
 		log.Fatal(message, " ", err)
-		os.Exit(1)
 	}
 }
 
