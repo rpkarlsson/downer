@@ -71,7 +71,7 @@ func getTorrent(torrent rss.Item, options cliOptions) {
 	check(err)
 }
 
-func main() {
+func parseOptions() cliOptions {
 	options := cliOptions{
 		downloadLimit: flag.Int("l", -1, "A limit to the amount of torrents to download"),
 		outPath:       flag.String("o", "", "Output path. Defaults to current dir."),
@@ -81,6 +81,11 @@ func main() {
 	}
 
 	flag.Parse()
+	return options
+}
+
+func main() {
+	options := parseOptions()
 	if *options.source == "" || *options.pattern == "" {
 		fmt.Println("A source and a pattern is required see -h for more info.")
 		return
