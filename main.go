@@ -20,6 +20,15 @@ import (
 	"github.com/rpkarlsson/downer/rss"
 )
 
+type cliOptions struct {
+	downloadLimit *int
+	outPath       *string
+	pattern       *string
+	source        *string
+	wait          *int
+}
+
+
 func check(e error) {
 	if e != nil {
 		panic(e)
@@ -58,15 +67,18 @@ func downloadTorrent(pattern string, outPath string, torrent rss.Item) {
 		0644)
 	check(err)
 }
-func main() {
-	source := flag.String("s", "", "A HTTP RSS source.")
-	downloadLimit := flag.Int("l", -1, "A limit to the amount of torrents to download")
-	pattern := flag.String("p", "", "The pattern to match RSS feed titles against.")
-	outPath := flag.String("o", "", "Output path. Defaults to current dir.")
-	wait := flag.Int("t", 60*15, "Time to sleep between checks in seconds. Defaults to 15 minutes")
-	flag.Parse()
 
-	if *source == "" || *pattern == "" {
+func main() {
+	options := cliOptions{
+		downloadLimit: flag.Int("l", -1, "A limit to the amount of torrents to download"),
+		outPath:       flag.String("o", "", "Output path. Defaults to current dir."),
+		pattern:       flag.String("p", "", "The pattern to match RSS feed titles against."),
+		source:        flag.String("s", "", "A HTTP RSS source."),
+		wait:          flag.Int("t", 60*15, "Time to sleep between checks in seconds. Defaults to 15 minutes"),
+	}
+
+	flag.Parse()
+	if *options.source == "" || *options.pattern == "" {
 		fmt.Println("A source and a pattern is required see -h for more info.")
 		return
 	}
@@ -74,22 +86,22 @@ func main() {
 	download_history := rss.History{}
 
 	for {
-		feedURI, err := url.ParseRequestURI(*source)
+		feedURI, err := url.ParseRequestURI(*options.source)
 		if err != nil {
-			fmt.Printf("Unable to parse %s as URL.\n", *source)
+			fmt.Printf("Unable to parse %s as URL.\n", *options.source)
 			break
 		}
 		feed := readFeed(feedURI)
 		for _, torrent := range feed.Items {
-			if torrent.IsMatch(*pattern) && !download_history.Contains(torrent) {
-				downloadTorrent(*pattern, *outPath, torrent)
+			if torrent.IsMatch(*options.pattern) && !download_history.Contains(torrent) {
+				downloadTorrent(*options.pattern, *options.outPath, torrent)
 				download_history.Add(torrent)
 				fmt.Printf("Found torrent %s\n", torrent.Title)
 			}
-			if download_history.Length() == *downloadLimit {
+			if download_history.Length() == *options.downloadLimit {
 				os.Exit(0)
 			}
 		}
-		time.Sleep(time.Duration(*wait) * time.Second)
+		time.Sleep(time.Duration(*options.wait) * time.Second)
 	}
 }
