@@ -17,6 +17,8 @@ import (
 	"strings"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/rpkarlsson/downer/magnet"
 	"github.com/rpkarlsson/downer/rss"
 )
@@ -29,26 +31,24 @@ type cliOptions struct {
 	wait          *int
 }
 
+func logAndExitOnErr(message string, err error) {
+	if err != nil {
+		log.Fatal(message, " ", err)
+		os.Exit(1)
+	}
+}
+
 func readFeed(source *url.URL) *rss.Feed {
 	resp, err := http.Get(source.String())
-	if err != nil {
-		fmt.Println("Error when fetching feed:", err)
-		os.Exit(1)
-	}
-
+	logAndExitOnErr("Error when fetching feed:", err)
 	defer resp.Body.Close()
+
 	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Println("Error when reading feed body:", err)
-		os.Exit(1)
-	}
+	logAndExitOnErr("Error when reading feed body:", err)
 
 	r := &rss.Feed{}
 	err = xml.Unmarshal(body, &r)
-	if err != nil {
-		fmt.Println("Error during RSS parsing:", err)
-		os.Exit(1)
-	}
+	logAndExitOnErr("Error during RSS parsing:", err)
 
 	return r
 }
@@ -113,18 +113,14 @@ func main() {
 	}
 
 	_, err := regexp.Compile(*options.pattern)
-
-	if err != nil {
-		fmt.Println("Unable to compile pattern:", err)
-		os.Exit(1)
-	}
+	logAndExitOnErr("error in pattern.", err)
 
 	download_history := rss.History{}
 
 	for {
 		feedURI, err := url.ParseRequestURI(*options.source)
 		if err != nil {
-			fmt.Printf("Unable to parse the source \"%s \" as URL.\n", *options.source)
+			log.Error("Unable to parse source URI: ", *options.source)
 			break
 		}
 		feed := readFeed(feedURI)
@@ -133,10 +129,10 @@ func main() {
 			if isMatching && !download_history.Contains(torrent) {
 				err := getTorrent(torrent, options)
 				if err != nil {
-					fmt.Printf("Unable to get torrent:", err)
+					log.Error("Unable to get torrent: ", err)
 				} else {
 					download_history.Add(torrent)
-					fmt.Printf("Found torrent %s\n", torrent.Title)
+					log.Info("Found ", torrent.Title)
 				}
 			}
 			if download_history.Length() == *options.downloadLimit {
