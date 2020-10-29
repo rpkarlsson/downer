@@ -38,6 +38,7 @@ func logAndExitOnErr(message string, err error) {
 }
 
 func readFeed(source *url.URL) *rss.Feed {
+	log.Debug("getting feed ", source)
 	resp, err := http.Get(source.String())
 	logAndExitOnErr("Error when fetching feed:", err)
 	defer resp.Body.Close()
@@ -104,6 +105,13 @@ func parseOptions() cliOptions {
 	return options
 }
 
+func init() {
+    debug, _ := os.LookupEnv("DEBUG")
+	if debug == "true" {
+		log.SetLevel(log.DebugLevel)
+	}
+}
+
 func main() {
 	options := parseOptions()
 	if *options.source == "" || *options.pattern == "" {
@@ -124,8 +132,10 @@ func main() {
 		}
 		feed := readFeed(feedURI)
 		for _, torrent := range feed.Items {
+			log.Debug("got torrent", torrent.Title)
 			isMatching, _ := torrent.IsMatch(*options.pattern)
 			if isMatching && !download_history.Contains(torrent) {
+				log.Debug("downloading torrent", torrent.Title)
 				err := getTorrent(torrent, options)
 				if err != nil {
 					log.Error("Unable to get torrent: ", err)
@@ -135,6 +145,7 @@ func main() {
 				}
 			}
 			if download_history.Length() == *options.downloadLimit {
+				log.Debug("reached download limit - exiting.")
 				os.Exit(0)
 			}
 		}
